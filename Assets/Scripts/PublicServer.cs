@@ -16,7 +16,8 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     
     [Header("Player List Setup")]
     public GameObject playerEntryPrefab; 
-    public Transform contentPanel;        
+    public Transform contentPanel;
+    public TMP_InputField maxPlayersInput;        
     private Dictionary<int, GameObject> playerListEntries = new Dictionary<int, GameObject>();
 
     private void Start()
@@ -24,6 +25,10 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     if (PhotonNetwork.InRoom)
     {
         lobbyTitleText.text = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
+
+        maxPlayersInput.text = PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
+        
+        maxPlayersInput.interactable = PhotonNetwork.IsMasterClient;
         
         RefreshPlayerList(); 
         UpdateLobbyUI();
@@ -66,30 +71,46 @@ private void RefreshPlayerList()
     }
 
     // This triggers whenever ANY player changes their properties (like IsReady)
-    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
+{
+    if (changedProps.ContainsKey("IsReady"))
     {
         if (playerListEntries.TryGetValue(targetPlayer.ActorNumber, out GameObject entry))
         {
             UpdateEntryDisplay(entry, targetPlayer);
         }
-        UpdateLobbyUI();
+        UpdateLobbyUI(); // Re-check if Master can start the game now
     }
+}
+
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+{
+    if (playerListEntries.ContainsKey(otherPlayer.ActorNumber))
+    {
+        Destroy(playerListEntries[otherPlayer.ActorNumber]);
+        playerListEntries.Remove(otherPlayer.ActorNumber);
+    }
+
+    UpdateLobbyUI(); 
+}
 
     private void UpdateEntryDisplay(GameObject entry, Player player)
-    {
-        // Assuming your prefab has Name text and Status text
-        TMP_Text[] texts = entry.GetComponentsInChildren<TMP_Text>();
-        texts[0].text = player.NickName;
+{
+    TMP_Text nameText = entry.transform.Find("NameText").GetComponent<TMP_Text>();
+    TMP_Text statusText = entry.transform.Find("StatusText").GetComponent<TMP_Text>();
 
-        if (player.CustomProperties.TryGetValue("IsReady", out object ready) && (bool)ready)
-        {
-            texts[1].text = "<color=green>Ready</color>";
-        }
-        else
-        {
-            texts[1].text = "<color=red>Not Ready</color>";
-        }
+    // 2. Set the Name
+    nameText.text = player.NickName;
+
+    // 3. Set the Status
+    bool isReady = false;
+    if (player.CustomProperties.TryGetValue("IsReady", out object ready))
+    {
+        isReady = (bool)ready;
     }
+
+    statusText.text = isReady ? "<color=green>Ready</color>" : "<color=red>Not Ready</color>";
+}
 
     // --- EXISTING LOGIC UPDATED ---
 

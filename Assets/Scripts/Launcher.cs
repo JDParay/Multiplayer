@@ -17,7 +17,8 @@ public class Launcher : MonoBehaviourPunCallbacks
 
     void Start()
     {
-        // Initial setup based on your "Connecting..." layout
+        PhotonNetwork.AutomaticallySyncScene = true; 
+    
         PhotonNetwork.ConnectUsingSettings();
         statusText.text = "Connecting...";
         
