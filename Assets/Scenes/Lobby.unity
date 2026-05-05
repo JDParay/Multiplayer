@@ -445,7 +445,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 114012978}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 191458284}
+        m_TargetAssemblyTypeName: LobbyManager, Assembly-CSharp
+        m_MethodName: OnClickActionButton
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &114012978
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -633,6 +645,7 @@ MonoBehaviour:
   actionButtonText: {fileID: 1670486454}
   playerEntryPrefab: {fileID: 6983813062134638442, guid: c24a12e29c563ce4db6a17d13938c7e9, type: 3}
   contentPanel: {fileID: 1049825690}
+  maxPlayersInput: {fileID: 1183023912}
 --- !u!4 &191458285
 Transform:
   m_ObjectHideFlags: 0

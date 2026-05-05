@@ -6,6 +6,12 @@ public class PlayerController : MonoBehaviourPun
     public float speed = 5f;
     public float jumpForce = 5f;
     private Rigidbody rb;
+    private PhotonView pv;
+
+    void Awake()
+    {
+        pv = GetComponent<PhotonView>();
+    }
 
     void Start()
     {
@@ -14,10 +20,8 @@ public class PlayerController : MonoBehaviourPun
 
     void Update()
     {
-        // 1. MUST check ownership first
         if (!photonView.IsMine) return; 
 
-        // 2. Old Input System movement (WASD / Arrows)
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
@@ -32,7 +36,6 @@ public class PlayerController : MonoBehaviourPun
 
     void Jump()
     {
-        // No extra check needed here because it's called inside the IsMine check above
         rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-}
+    }
 }
