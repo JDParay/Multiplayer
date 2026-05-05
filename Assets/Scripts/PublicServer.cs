@@ -4,15 +4,15 @@ using Photon.Realtime;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections.Generic;
-using Hashtable = ExitGames.Client.Photon.Hashtable; // Required for Custom Properties
+using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 public class LobbyManager : MonoBehaviourPunCallbacks
 {
     [Header("UI References")]
     public TMP_Text lobbyTitleText;
     public TMP_Text playerCountText;
-    public Button actionButton; // Rename your "Start Game" button to this
-    public TMP_Text actionButtonText; // The text inside the button
+    public Button actionButton;
+    public TMP_Text actionButtonText;
     
     [Header("Player List Setup")]
     public GameObject playerEntryPrefab; 
@@ -26,17 +26,16 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         UpdateLobbyUI();
     }
 
-private void RefreshPlayerList()
-{
-    // Clear existing entries first
-    foreach (GameObject obj in playerListEntries.Values) Destroy(obj);
-    playerListEntries.Clear();
-
-    foreach (Player p in PhotonNetwork.PlayerList)
+    private void RefreshPlayerList()
     {
-        AddPlayerToList(p);
+        foreach (GameObject obj in playerListEntries.Values) Destroy(obj);
+        playerListEntries.Clear();
+
+        foreach (Player p in PhotonNetwork.PlayerList)
+        {
+            AddPlayerToList(p);
+        }
     }
-}
 
     // --- READY SYSTEM LOGIC ---
 
@@ -44,12 +43,12 @@ private void RefreshPlayerList()
     {
         if (PhotonNetwork.IsMasterClient)
         {
-            // Master Client starts the game
+
             PhotonNetwork.LoadLevel("GameRoom");
         }
         else
         {
-            // Regular player toggles ready status
+
             bool isReady = false;
             if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("IsReady", out object ready))
             {
@@ -61,144 +60,134 @@ private void RefreshPlayerList()
         }
     }
 
-    // This triggers whenever ANY player changes their properties (like IsReady)
     public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
-{
-    if (changedProps.ContainsKey("IsReady"))
     {
-        if (playerListEntries.TryGetValue(targetPlayer.ActorNumber, out GameObject entry))
+        if (changedProps.ContainsKey("IsReady"))
         {
-            UpdateEntryDisplay(entry, targetPlayer);
+            if (playerListEntries.TryGetValue(targetPlayer.ActorNumber, out GameObject entry))
+            {
+                UpdateEntryDisplay(entry, targetPlayer);
+            }
+            UpdateLobbyUI();
         }
-        UpdateLobbyUI(); // Re-check if Master can start the game now
-    }
-}
-
-public override void OnPlayerEnteredRoom(Player newPlayer)
-{
-    Debug.Log($"New player joined: {newPlayer.NickName}");
-
-    // Refresh the full player list for existing players
-    RefreshPlayerList();
-    
-    UpdateLobbyUI();
-}
-
-    public override void OnPlayerLeftRoom(Player otherPlayer)
-{
-    if (playerListEntries.ContainsKey(otherPlayer.ActorNumber))
-    {
-        Destroy(playerListEntries[otherPlayer.ActorNumber]);
-        playerListEntries.Remove(otherPlayer.ActorNumber);
     }
 
-    UpdateLobbyUI(); 
-}
-
-private void UpdateEntryDisplay(GameObject entry, Player player)
-{
-    TMP_Text nameText = entry.transform.Find("NameText").GetComponent<TMP_Text>();
-    TMP_Text statusText = entry.transform.Find("StatusText").GetComponent<TMP_Text>();
-
-    // Set Player Name
-    nameText.text = player.NickName;
-
-    // === NEW LOGIC: Show "Host" for Master Client ===
-    if (player.IsMasterClient)
+    public override void OnPlayerEnteredRoom(Player newPlayer)
     {
-        statusText.text = "<color=yellow><b>Host</b></color>";
+        Debug.Log($"New player joined: {newPlayer.NickName}");
+
+        RefreshPlayerList();
+        
+        UpdateLobbyUI();
     }
-    else
+
+        public override void OnPlayerLeftRoom(Player otherPlayer)
     {
-        // Regular players show Ready status
-        bool isReady = false;
-        if (player.CustomProperties.TryGetValue("IsReady", out object ready))
+        if (playerListEntries.ContainsKey(otherPlayer.ActorNumber))
         {
-            isReady = (bool)ready;
+            Destroy(playerListEntries[otherPlayer.ActorNumber]);
+            playerListEntries.Remove(otherPlayer.ActorNumber);
         }
 
-        statusText.text = isReady ? "<color=green>Ready</color>" : "<color=red>Not Ready</color>";
+        UpdateLobbyUI(); 
     }
-}
 
-public override void OnMasterClientSwitched(Player newMasterClient)
-{
-    Debug.Log($"New Master Client: {newMasterClient.NickName}");
-    
-    // Refresh all player entries so the new host shows "Host"
-    RefreshPlayerList();
-    UpdateLobbyUI();
-}
-
-    // --- EXISTING LOGIC UPDATED ---
-
- private void UpdateLobbyUI()
-{
-    if (PhotonNetwork.CurrentRoom == null) return;
-
-    int currentPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
-    playerCountText.text = $"{currentPlayers} / {PhotonNetwork.CurrentRoom.MaxPlayers}";
-
-    // === CRITICAL: Update Input Field for ALL players ===
-    if (maxPlayersInput != null)
+    private void UpdateEntryDisplay(GameObject entry, Player player)
     {
-        maxPlayersInput.text = PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
+        TMP_Text nameText = entry.transform.Find("NameText").GetComponent<TMP_Text>();
+        TMP_Text statusText = entry.transform.Find("StatusText").GetComponent<TMP_Text>();
+
+        nameText.text = player.NickName;
+
+        if (player.IsMasterClient)
+        {
+            statusText.text = "<color=yellow><b>Host</b></color>";
+        }
+        else
+        {
+            bool isReady = false;
+            if (player.CustomProperties.TryGetValue("IsReady", out object ready))
+            {
+                isReady = (bool)ready;
+            }
+
+            statusText.text = isReady ? "<color=green>Ready</color>" : "<color=red>Not Ready</color>";
+        }
+    }
+
+    public override void OnMasterClientSwitched(Player newMasterClient)
+    {
+        Debug.Log($"New Master Client: {newMasterClient.NickName}");
+        
+        RefreshPlayerList();
+        UpdateLobbyUI();
+    }
+
+    // --- EXISTING LOGIC ---
+
+    private void UpdateLobbyUI()
+    {
+        if (PhotonNetwork.CurrentRoom == null) return;
+
+        int currentPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
+        playerCountText.text = $"{currentPlayers} / {PhotonNetwork.CurrentRoom.MaxPlayers}";
+
+        if (maxPlayersInput != null)
+        {
+            maxPlayersInput.text = PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
+            maxPlayersInput.interactable = PhotonNetwork.IsMasterClient;
+        }
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            actionButtonText.text = "Start Game";
+            actionButton.interactable = CheckIfEveryoneIsReady() && currentPlayers >= 3;
+        }
+        else
+        {
+            bool isReady = false;
+            if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("IsReady", out object ready))
+                isReady = (bool)ready;
+
+            actionButtonText.text = isReady ? "Unready" : "Ready";
+            actionButton.interactable = true;
+        }
+    }
+
+        private bool CheckIfEveryoneIsReady()
+    {
+        foreach (Player p in PhotonNetwork.PlayerList)
+        {
+            if (p.IsMasterClient) continue;
+
+            if (p.CustomProperties.TryGetValue("IsReady", out object ready))
+            {
+                if (!(bool)ready) return false;
+            }
+            else 
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public override void OnJoinedRoom()
+    {
+        if (lobbyTitleText != null)
+            lobbyTitleText.text = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
+
+        Hashtable props = new Hashtable { { "IsReady", false } };
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+
+        foreach (GameObject obj in playerListEntries.Values) Destroy(obj);
+        playerListEntries.Clear();
+
+        RefreshPlayerList();
+        UpdateLobbyUI();
+
         maxPlayersInput.interactable = PhotonNetwork.IsMasterClient;
     }
-
-    // Action button logic
-    if (PhotonNetwork.IsMasterClient)
-    {
-        actionButtonText.text = "Start Game";
-        actionButton.interactable = CheckIfEveryoneIsReady() && currentPlayers >= 3;
-    }
-    else
-    {
-        bool isReady = false;
-        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("IsReady", out object ready))
-            isReady = (bool)ready;
-
-        actionButtonText.text = isReady ? "Unready" : "Ready";
-        actionButton.interactable = true;
-    }
-}
-
-    private bool CheckIfEveryoneIsReady()
-{
-    foreach (Player p in PhotonNetwork.PlayerList)
-    {
-        if (p.IsMasterClient) continue;
-
-        if (p.CustomProperties.TryGetValue("IsReady", out object ready))
-        {
-            if (!(bool)ready) return false;
-        }
-        else 
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-public override void OnJoinedRoom()
-{
-    if (lobbyTitleText != null)
-        lobbyTitleText.text = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
-
-    // Reset ready status
-    Hashtable props = new Hashtable { { "IsReady", false } };
-    PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-
-    // Refresh everything
-    foreach (GameObject obj in playerListEntries.Values) Destroy(obj);
-    playerListEntries.Clear();
-
-    RefreshPlayerList();
-    UpdateLobbyUI();
-
-    maxPlayersInput.interactable = PhotonNetwork.IsMasterClient;
-}
     private void AddPlayerToList(Player player)
     {
         GameObject entry = Instantiate(playerEntryPrefab, contentPanel);
@@ -206,35 +195,35 @@ public override void OnJoinedRoom()
         playerListEntries.Add(player.ActorNumber, entry);
     }
     
-public void SetMaxPlayersFromInput(string input)
-{
-    if (!PhotonNetwork.IsMasterClient) 
+    public void SetMaxPlayersFromInput(string input)
     {
-        if (maxPlayersInput != null && PhotonNetwork.CurrentRoom != null)
-            maxPlayersInput.text = PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
-        return;
+        if (!PhotonNetwork.IsMasterClient) 
+        {
+            if (maxPlayersInput != null && PhotonNetwork.CurrentRoom != null)
+                maxPlayersInput.text = PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
+            return;
+        }
+
+        if (int.TryParse(input, out int newMax))
+        {
+            byte clampedMax = (byte)Mathf.Clamp(newMax, 3, 12);
+            
+            // This should trigger OnRoomPropertiesUpdate for everyone
+            PhotonNetwork.CurrentRoom.MaxPlayers = clampedMax;
+
+            // Force local update immediately
+            UpdateLobbyUI();
+
+            Debug.Log($"Max Players changed to: {clampedMax}");
+        }
     }
-
-    if (int.TryParse(input, out int newMax))
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
     {
-        byte clampedMax = (byte)Mathf.Clamp(newMax, 3, 12);
-        
-        // This should trigger OnRoomPropertiesUpdate for everyone
-        PhotonNetwork.CurrentRoom.MaxPlayers = clampedMax;
-
-        // Force local update immediately
         UpdateLobbyUI();
 
-        Debug.Log($"Max Players changed to: {clampedMax}");
+        if (lobbyTitleText != null && PhotonNetwork.CurrentRoom != null)
+            lobbyTitleText.text = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
     }
-}
-public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
-{
-    UpdateLobbyUI();
-
-    if (lobbyTitleText != null && PhotonNetwork.CurrentRoom != null)
-        lobbyTitleText.text = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
-}
-    public void OnClickLeaveLobby() => PhotonNetwork.LeaveRoom();
-    public override void OnLeftRoom() => UnityEngine.SceneManagement.SceneManager.LoadScene("LandingPage");
-}
+        public void OnClickLeaveLobby() => PhotonNetwork.LeaveRoom();
+        public override void OnLeftRoom() => UnityEngine.SceneManagement.SceneManager.LoadScene("LandingPage");
+    }

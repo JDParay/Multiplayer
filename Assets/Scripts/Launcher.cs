@@ -25,7 +25,6 @@ public class Launcher : MonoBehaviourPunCallbacks
         enterButton.interactable = false;
         createButton.interactable = false;
 
-        // Force the code input to be numbers only and max 5 digits
         codeInputField.characterLimit = 5;
         codeInputField.contentType = TMP_InputField.ContentType.IntegerNumber;
     }
@@ -83,7 +82,6 @@ public class Launcher : MonoBehaviourPunCallbacks
 
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
-        // Triggers if the 5-digit code is already in use
         statusText.text = "Error: This 5 digit code is already registered.";
     }
 
@@ -96,8 +94,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
 {
     statusText.text = "Connected! Going to lobby...";
-    
-    // Ensure only the Master Client (the creator) loads the level
+
     if (PhotonNetwork.IsMasterClient)
     {
         PhotonNetwork.LoadLevel("Lobby"); 
