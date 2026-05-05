@@ -208,10 +208,8 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         {
             byte clampedMax = (byte)Mathf.Clamp(newMax, 3, 12);
             
-            // This should trigger OnRoomPropertiesUpdate for everyone
             PhotonNetwork.CurrentRoom.MaxPlayers = clampedMax;
 
-            // Force local update immediately
             UpdateLobbyUI();
 
             Debug.Log($"Max Players changed to: {clampedMax}");
