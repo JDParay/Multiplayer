@@ -94,6 +94,8 @@ public class Launcher : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
 {
     statusText.text = "Connected! Going to lobby...";
+    
+    Debug.Log($"Joined Room: {PhotonNetwork.CurrentRoom.Name} | IsMaster: {PhotonNetwork.IsMasterClient}");
 
     if (PhotonNetwork.IsMasterClient)
     {

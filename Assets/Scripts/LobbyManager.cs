@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using Photon.Pun;
 using Photon.Realtime;
 using TMPro;
@@ -20,10 +21,27 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     public TMP_InputField maxPlayersInput;       
     private Dictionary<int, GameObject> playerListEntries = new Dictionary<int, GameObject>();
 
+    [Header("Game Mode Settings")]
+    public TMP_Dropdown gameModeDropdown;
+    public TMP_Text selectedModeDisplayText;
+    private GameMode currentGameMode = GameMode.PressTheButton;
+
+    private void Awake()
+    {
+        // Extra safety for Photon scene loading
+        PhotonNetwork.AutomaticallySyncScene = true;
+    }
     private void Start()
     {
+    //     Debug.Log("LobbyManager Start() running");
+    
+    // if (lobbyTitleText != null)
+    //     lobbyTitleText.text = "TEST - SHOULD SEE THIS";
+
         RefreshPlayerList();
         UpdateLobbyUI();
+
+        SetupGameModeDropdown();
     }
 
     private void RefreshPlayerList()
@@ -37,14 +55,36 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         }
     }
 
+    private void SetupGameModeDropdown()
+    {
+        if (gameModeDropdown == null) return;
+
+        gameModeDropdown.ClearOptions();
+        gameModeDropdown.AddOptions(new List<string> { "Press the Button", "Goal" });
+
+        gameModeDropdown.onValueChanged.AddListener(OnGameModeChanged);
+
+        // Only Master Client can change the mode
+        gameModeDropdown.interactable = PhotonNetwork.IsMasterClient;
+
+        // Set initial value
+        gameModeDropdown.value = (int)currentGameMode;
+    }
+
     // --- READY SYSTEM LOGIC ---
 
     public void OnClickActionButton()
     {
         if (PhotonNetwork.IsMasterClient)
         {
+            // Save the current game mode to room properties
+            Hashtable props = new Hashtable { { "GameMode", (byte)currentGameMode } };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
-            PhotonNetwork.LoadLevel("GameRoom");
+            string sceneName = currentGameMode.ToString() + "Lobby";
+            
+            Debug.Log($"Loading 3D Lobby: {sceneName}");
+            PhotonNetwork.LoadLevel(sceneName);
         }
         else
         {
@@ -172,21 +212,69 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         return true;
     }
 
-    public override void OnJoinedRoom()
+public override void OnJoinedRoom()
+{
+    Debug.Log($"OnJoinedRoom() -> IsMasterClient: {PhotonNetwork.IsMasterClient}");
+
+    // Different timing for Host vs Clients
+    if (PhotonNetwork.IsMasterClient)
     {
-        if (lobbyTitleText != null)
-            lobbyTitleText.text = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
+        StartCoroutine(DelayedLobbySetup(0.4f));   // Longer delay for host
+    }
+    else
+    {
+        StartCoroutine(DelayedLobbySetup(0.15f));
+    }
+}
 
-        Hashtable props = new Hashtable { { "IsReady", false } };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+private IEnumerator DelayedLobbySetup(float delay)
+{
+    yield return new WaitForSeconds(delay);
 
-        foreach (GameObject obj in playerListEntries.Values) Destroy(obj);
-        playerListEntries.Clear();
+    // === LOBBY TITLE ===
+    if (lobbyTitleText != null && PhotonNetwork.CurrentRoom != null)
+    {
+        string title = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
+        lobbyTitleText.text = title;
+        lobbyTitleText.SetAllDirty();
+        Debug.Log($"✅ Lobby Title Updated: {title} | IsMaster: {PhotonNetwork.IsMasterClient}");
+    }
+    else
+    {
+        Debug.LogWarning("Lobby title or room still not ready...");
+    }
 
-        RefreshPlayerList();
-        UpdateLobbyUI();
+    // Normal setup
+    Hashtable props = new Hashtable { { "IsReady", false } };
+    PhotonNetwork.LocalPlayer.SetCustomProperties(props);
 
-        maxPlayersInput.interactable = PhotonNetwork.IsMasterClient;
+    foreach (GameObject obj in playerListEntries.Values) Destroy(obj);
+    playerListEntries.Clear();
+
+    RefreshPlayerList();
+    UpdateLobbyUI();
+
+    maxPlayersInput.interactable = PhotonNetwork.IsMasterClient;
+
+    SetupGameModeDropdown();
+
+    // Load saved game mode
+    if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("GameMode", out object modeObj))
+    {
+        currentGameMode = (GameMode)System.Convert.ToByte(modeObj);
+        if (gameModeDropdown != null)
+            gameModeDropdown.value = (int)currentGameMode;
+    }
+}
+
+    private void OnGameModeChanged(int index)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        currentGameMode = (GameMode)index;
+        
+        Hashtable roomProps = new Hashtable { { "GameMode", (byte)currentGameMode } };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(roomProps);
     }
     private void AddPlayerToList(Player player)
     {
@@ -217,10 +305,28 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     }
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
     {
-        UpdateLobbyUI();
+        if (propertiesThatChanged.ContainsKey("GameMode"))
+        {
+            currentGameMode = (GameMode)(byte)propertiesThatChanged["GameMode"];
 
+            if (gameModeDropdown != null)
+                gameModeDropdown.value = (int)currentGameMode;
+
+            if (selectedModeDisplayText != null)
+            {
+                selectedModeDisplayText.text = currentGameMode == GameMode.PressTheButton 
+                    ? "Press the Button" 
+                    : "Soccer";
+            }
+        }
+
+        // Extra title safety
         if (lobbyTitleText != null && PhotonNetwork.CurrentRoom != null)
+        {
             lobbyTitleText.text = "Lobby #" + PhotonNetwork.CurrentRoom.Name;
+        }
+
+        UpdateLobbyUI();
     }
         public void OnClickLeaveLobby() => PhotonNetwork.LeaveRoom();
         public override void OnLeftRoom() => UnityEngine.SceneManagement.SceneManager.LoadScene("LandingPage");

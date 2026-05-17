@@ -12,8 +12,11 @@ EditorBuildSettings:
     path: Assets/Scenes/Lobby.unity
     guid: ed39d8f732b0efa4480a9fc84520320a
   - enabled: 1
-    path: Assets/Scenes/GameRoom.unity
+    path: Assets/Scenes/PressTheButtonLobby.unity
     guid: ff87c01bef4692b46bd7c6746c0cf5d9
+  - enabled: 1
+    path: Assets/Scenes/GoalLobby.unity
+    guid: 543361c597e4a644dbcfe14915172c87
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
