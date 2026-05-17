@@ -1,57 +1,93 @@
 using Photon.Pun;
 using UnityEngine;
+using System.Collections;
 
 public class LobbyPlatform : MonoBehaviour
 {
     public enum PlatformType { Ready, ChangeName, Leave }
 
+    [Header("Platform Settings")]
     public PlatformType type;
 
-    private PhotonView localPlayerPV;
-    private float standingTime;
-    private bool playerOnPlatform;
+    [Header("Leave Platform Only")]
+    public float leaveHoldTime = 5f;
+
+    private float standingTime = 0f;
+    private bool playerOnPlatform = false;
+
+    private NameTag localNameTag;
 
     private void OnTriggerEnter(Collider other)
+{
+    if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
     {
-        if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
-        {
-            localPlayerPV = other.GetComponent<PhotonView>();
-            playerOnPlatform = true;
-            standingTime = 0f;
+        playerOnPlatform = true;
+        standingTime = 0f;
+        localNameTag = other.GetComponentInChildren<NameTag>();
 
+        if (localNameTag != null)
+        {
             if (type == PlatformType.ChangeName)
-                ShowNameChangeUI();   // Implement your UI popup
+            {
+                localNameTag.SetEditingMode(true);
+                Lobby3DManager.Instance.ShowNameChangeUI();
+            }
+            
+            // START COUNTDOWN IMMEDIATELY WHEN STEPPING ON LEAVE
+            if (type == PlatformType.Leave)
+            {
+                localNameTag.StartLeaveCountdown(leaveHoldTime);
+            }
         }
     }
+}
 
-    private void OnTriggerExit(Collider other)
+private void OnTriggerExit(Collider other)
+{
+    if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
     {
-        if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
-        {
-            playerOnPlatform = false;
-        }
-    }
+        playerOnPlatform = false;
+        standingTime = 0f;
 
-    private void Update()
+        if (localNameTag != null)
+        {
+            if (type == PlatformType.ChangeName)
+                localNameTag.SetEditingMode(false);
+            
+            // CANCEL COUNTDOWN IF THEY STEP OFF EARLY
+            if (type == PlatformType.Leave)
+                localNameTag.StopLeaveCountdown();
+        }
+
+        localNameTag = null;
+    }
+}
+
+private void Update()
+{
+    if (!playerOnPlatform) return;
+
+    standingTime += Time.deltaTime;
+
+    switch (type)
     {
-        if (!playerOnPlatform) return;
+        case PlatformType.Ready:
+            if (standingTime > 0.4f)
+            {
+                Lobby3DManager.Instance.ToggleLocalReady();
+                playerOnPlatform = false; 
+            }
+            break;
 
-        standingTime += Time.deltaTime;
-
-        if (type == PlatformType.Ready && standingTime > 0.5f)
-        {
-            Lobby3DManager.Instance.SetReady(true);
-            playerOnPlatform = false;
-        }
-
-        if (type == PlatformType.Leave && standingTime >= 5f)
-        {
-            Lobby3DManager.Instance.StartLeaveProcess();
-        }
+        case PlatformType.Leave:
+            // The Nametag is already counting down visual text. 
+            // Once the physical physics timer completes, kick them out.
+            if (standingTime >= leaveHoldTime)
+            {
+                Lobby3DManager.Instance.StartLeaveProcess();
+                playerOnPlatform = false;
+            }
+            break;
     }
-
-    private void ShowNameChangeUI()
-    {
-        // On confirm: PhotonNetwork.NickName = newName;
-    }
+}
 }

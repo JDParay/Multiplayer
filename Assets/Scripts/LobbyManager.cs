@@ -316,7 +316,7 @@ private IEnumerator DelayedLobbySetup(float delay)
             {
                 selectedModeDisplayText.text = currentGameMode == GameMode.PressTheButton 
                     ? "Press the Button" 
-                    : "Soccer";
+                    : "Goal";
             }
         }
 
