@@ -30,9 +30,6 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("GameMode", out object modeObj))
         {
             currentGameMode = (GameMode)System.Convert.ToByte(modeObj);
-            
-            if (gameModeText != null)
-                gameModeText.text = currentGameMode.ToString().Replace("TheButton", " the Button");
         }
 
         SetReady(false);
@@ -78,6 +75,13 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         if (nameChangePanel == null) return;
         
         nameChangePanel.SetActive(false);
+        SetEditingStatus(false);
+    }
+
+    public void SetEditingStatus(bool isEditing)
+    {
+        Hashtable props = new Hashtable { { "IsEditing", isEditing } };
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
     }
 
     public void SubmitNameChange()
@@ -89,8 +93,6 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         // 1. Update local Photon Nickname
         PhotonNetwork.NickName = newName;
 
-        // 2. Force update our custom room properties so other clients' NameTags catch it instantly
-        // Photon updates NickName over network natively, but updating network properties ensures synchronization
         Hashtable prop = new Hashtable { { "UpdateName", Random.Range(0, 10000) } }; 
         PhotonNetwork.LocalPlayer.SetCustomProperties(prop);
 

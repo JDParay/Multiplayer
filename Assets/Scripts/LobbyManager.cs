@@ -24,19 +24,14 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     [Header("Game Mode Settings")]
     public TMP_Dropdown gameModeDropdown;
     public TMP_Text selectedModeDisplayText;
-    private GameMode currentGameMode = GameMode.PressTheButton;
+    private GameMode currentGameMode = GameMode.StarCollect;
 
     private void Awake()
     {
-        // Extra safety for Photon scene loading
         PhotonNetwork.AutomaticallySyncScene = true;
     }
     private void Start()
     {
-    //     Debug.Log("LobbyManager Start() running");
-    
-    // if (lobbyTitleText != null)
-    //     lobbyTitleText.text = "TEST - SHOULD SEE THIS";
 
         RefreshPlayerList();
         UpdateLobbyUI();
@@ -60,7 +55,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         if (gameModeDropdown == null) return;
 
         gameModeDropdown.ClearOptions();
-        gameModeDropdown.AddOptions(new List<string> { "Press the Button", "Goal" });
+        gameModeDropdown.AddOptions(new List<string> { "Star Collect", "Goal" });
 
         gameModeDropdown.onValueChanged.AddListener(OnGameModeChanged);
 
@@ -216,10 +211,9 @@ public override void OnJoinedRoom()
 {
     Debug.Log($"OnJoinedRoom() -> IsMasterClient: {PhotonNetwork.IsMasterClient}");
 
-    // Different timing for Host vs Clients
     if (PhotonNetwork.IsMasterClient)
     {
-        StartCoroutine(DelayedLobbySetup(0.4f));   // Longer delay for host
+        StartCoroutine(DelayedLobbySetup(0.4f)); 
     }
     else
     {
@@ -314,8 +308,8 @@ private IEnumerator DelayedLobbySetup(float delay)
 
             if (selectedModeDisplayText != null)
             {
-                selectedModeDisplayText.text = currentGameMode == GameMode.PressTheButton 
-                    ? "Press the Button" 
+                selectedModeDisplayText.text = currentGameMode == GameMode.StarCollect 
+                    ? "Star Collect" 
                     : "Goal";
             }
         }

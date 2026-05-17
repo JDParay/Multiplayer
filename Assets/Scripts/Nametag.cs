@@ -94,15 +94,21 @@ public void UpdateHostIndicator()
 
     private void UpdateActionText()
     {
-        if (actionText == null) return;
+        if (actionText == null || pv?.Owner == null) return;
+
+        bool networkIsEditing = false;
+        if (pv.Owner.CustomProperties.TryGetValue("IsEditing", out object editingObj))
+        {
+            networkIsEditing = (bool)editingObj;
+        }
 
         if (isLeaving && leaveTimer > 0)
         {
             actionText.text = $"<color=orange>Leaving in {Mathf.Ceil(leaveTimer)}s</color>";
         }
-        else if (isEditing)
+        else if (networkIsEditing)
         {
-            actionText.text = "<color=cyan>[Editing Name]</color>";
+            actionText.text = "[Currently Editing]";
         }
         else
         {

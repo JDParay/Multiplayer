@@ -29,7 +29,7 @@ public class LobbyPlatform : MonoBehaviour
         {
             if (type == PlatformType.ChangeName)
             {
-                localNameTag.SetEditingMode(true);
+                Lobby3DManager.Instance.SetEditingStatus(true);
                 Lobby3DManager.Instance.ShowNameChangeUI();
             }
             
@@ -52,11 +52,16 @@ private void OnTriggerExit(Collider other)
         if (localNameTag != null)
         {
             if (type == PlatformType.ChangeName)
-                localNameTag.SetEditingMode(false);
+                Lobby3DManager.Instance.SetEditingStatus(false);
             
             // CANCEL COUNTDOWN IF THEY STEP OFF EARLY
             if (type == PlatformType.Leave)
                 localNameTag.StopLeaveCountdown();
+        }
+
+        if (type == PlatformType.Ready)
+        {
+            Lobby3DManager.Instance.SetLocalPlayerReady(false);
         }
 
         localNameTag = null;
