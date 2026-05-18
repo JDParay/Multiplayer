@@ -1,5 +1,5 @@
 public enum GameMode
 {
-    StarCollect,
+    CoinCollect,
     Goal
 }

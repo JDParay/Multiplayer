@@ -2,7 +2,7 @@ using Photon.Pun;
 using TMPro;
 using UnityEngine;
 
-public class NameTag : MonoBehaviour
+public class Nametag : MonoBehaviour
 {
     [Header("Text References")]
     public TMP_Text nameText;     
@@ -54,22 +54,36 @@ public void UpdateHostIndicator()
 }
 
     private void LateUpdate()
+{
+    if (cam == null) cam = Camera.main;
+    if (cam != null) 
+        transform.LookAt(transform.position + cam.transform.forward);
+
+    if (pv != null && pv.Owner != null && nameText != null)
     {
-        if (cam == null) cam = Camera.main;
-        if (cam != null)
-        {
-            transform.LookAt(transform.position + cam.transform.forward);
-        }
+        nameText.text = pv.Owner.NickName;
+    }
 
-        if (pv != null && pv.Owner != null && nameText != null)
-        {
-            // Continuously matches Photon's synced nickname data
-            nameText.text = pv.Owner.NickName; 
-        }
-
+    // === CHANGED: Use environment active state instead of scene name ===
+    if (IsInLobbyPhase())
+    {
         UpdateReadyStatus();
+        UpdateHostIndicator();
         UpdateActionText();
     }
+    else
+    {
+        // Minigame phase
+        if (statusText != null) statusText.text = "";
+        if (actionText != null) actionText.text = "";
+        
+        // Keep winner text if it was set
+        if (hostText != null && hostText.text != "<color=yellow><b>WINNER!</b></color>")
+        {
+            hostText.text = ""; 
+        }
+    }
+}
 
     public void RefreshName()
     {
@@ -80,17 +94,20 @@ public void UpdateHostIndicator()
     }
 
     private void UpdateReadyStatus()
+{
+    if (statusText == null || pv?.Owner == null) return;
+
+    bool isReady = false;
+    if (pv.Owner.CustomProperties != null && 
+        pv.Owner.CustomProperties.TryGetValue("IsReady", out object readyObj))
     {
-        if (statusText == null || pv?.Owner == null) return;
-
-        bool isReady = false;
-        if (pv.Owner.CustomProperties.TryGetValue("IsReady", out object ready))
-            isReady = (bool)ready;
-
-        statusText.text = isReady ? 
-            "<color=green>[READY]</color>" : 
-            "<color=red>[NOT READY]</color>";
+        if (readyObj is bool b) isReady = b;
     }
+
+    statusText.text = isReady ? 
+        "<color=green>[READY]</color>" : 
+        "<color=red>[NOT READY]</color>";
+}
 
     private void UpdateActionText()
     {
@@ -116,6 +133,14 @@ public void UpdateHostIndicator()
         }
     }
 
+    private bool IsInLobbyPhase()
+    {
+        if (Lobby3DManager.Instance == null) return true;
+
+        return Lobby3DManager.Instance.lobbyEnvironment != null && 
+            Lobby3DManager.Instance.lobbyEnvironment.activeSelf;
+    }
+
     // ====================== PUBLIC METHODS ======================
 
     public void StartLeaveCountdown(float duration)
@@ -135,6 +160,12 @@ public void UpdateHostIndicator()
     {
         isEditing = editing;
     }
+
+    public void ShowWinner()
+{
+    if (hostText != null)
+        hostText.text = "<color=yellow><b>WINNER!</b></color>";
+}
 
     private System.Collections.IEnumerator LeaveCountdown()
     {

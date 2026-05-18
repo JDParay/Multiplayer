@@ -1,14 +1,14 @@
 using Photon.Pun;
 using UnityEngine;
 
-public class LobbyPlayerSpawner : MonoBehaviour
+public class SpawnManager : MonoBehaviour
 {
     [Header("Player Settings")]
     public GameObject playerPrefab;
 
     [Header("Spawn Points - Exactly 3 recommended")]
     public Transform leftSpawn;
-    public Transform middleSpawn;   // Host always spawns here
+    public Transform middleSpawn; 
     public Transform rightSpawn;
 
     private void Start()
@@ -32,7 +32,6 @@ public class LobbyPlayerSpawner : MonoBehaviour
         {
             spawnPos = middleSpawn.position;
             spawnRot = middleSpawn.rotation;
-            Debug.Log("🟡 Host spawned in the middle");
         }
         else if (leftSpawn != null && rightSpawn != null)
         {
@@ -56,7 +55,12 @@ public class LobbyPlayerSpawner : MonoBehaviour
             Debug.LogWarning("⚠️ Spawn points not fully assigned. Spawning at origin.");
         }
 
-        PhotonNetwork.Instantiate("Prefabs/PlayerPrefab", spawnPos, spawnRot);
-        Debug.Log($"✅ Spawned {PhotonNetwork.LocalPlayer.NickName}");
+        GameObject playerInstance = PhotonNetwork.Instantiate("Prefabs/PlayerPrefab", spawnPos, spawnRot);
+        Debug.Log($"✅ Spawned player instance over network");
+
+        if (playerInstance != null)
+        {
+            DontDestroyOnLoad(playerInstance);
+        }
     }
 }

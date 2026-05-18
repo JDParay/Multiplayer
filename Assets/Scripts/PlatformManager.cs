@@ -14,85 +14,81 @@ public class LobbyPlatform : MonoBehaviour
 
     private float standingTime = 0f;
     private bool playerOnPlatform = false;
-
-    private NameTag localNameTag;
+    private Nametag localNameTag;
 
     private void OnTriggerEnter(Collider other)
-{
-    if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
     {
-        playerOnPlatform = true;
-        standingTime = 0f;
-        localNameTag = other.GetComponentInChildren<NameTag>();
-
-        if (localNameTag != null)
+        if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
         {
-            if (type == PlatformType.ChangeName)
+            playerOnPlatform = true;
+            standingTime = 0f;
+            localNameTag = other.GetComponentInChildren<Nametag>();
+
+            if (localNameTag != null)
             {
-                Lobby3DManager.Instance.SetEditingStatus(true);
-                Lobby3DManager.Instance.ShowNameChangeUI();
-            }
-            
-            // START COUNTDOWN IMMEDIATELY WHEN STEPPING ON LEAVE
-            if (type == PlatformType.Leave)
-            {
-                localNameTag.StartLeaveCountdown(leaveHoldTime);
+                if (type == PlatformType.ChangeName)
+                {
+                    Lobby3DManager.Instance.SetEditingStatus(true);
+                    Lobby3DManager.Instance.ShowNameChangeUI();
+                }
+                
+                if (type == PlatformType.Leave)
+                {
+                    localNameTag.StartLeaveCountdown(leaveHoldTime);
+                }
             }
         }
     }
-}
 
-private void OnTriggerExit(Collider other)
-{
-    if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
+    private void OnTriggerExit(Collider other)
     {
-        playerOnPlatform = false;
-        standingTime = 0f;
-
-        if (localNameTag != null)
+        if (other.CompareTag("Player") && other.GetComponent<PhotonView>().IsMine)
         {
-            if (type == PlatformType.ChangeName)
-                Lobby3DManager.Instance.SetEditingStatus(false);
-            
-            // CANCEL COUNTDOWN IF THEY STEP OFF EARLY
-            if (type == PlatformType.Leave)
-                localNameTag.StopLeaveCountdown();
-        }
+            playerOnPlatform = false;
+            standingTime = 0f;
 
-        if (type == PlatformType.Ready)
-        {
-            Lobby3DManager.Instance.SetLocalPlayerReady(false);
-        }
+            if (localNameTag != null)
+            {
+                if (type == PlatformType.ChangeName)
+                    Lobby3DManager.Instance.SetEditingStatus(false);
+                
+                if (type == PlatformType.Leave)
+                    localNameTag.StopLeaveCountdown();
+            }
 
-        localNameTag = null;
+            // Fixed for new Lobby3DManager
+            if (type == PlatformType.Ready)
+            {
+                Lobby3DManager.Instance.SetReady(false);
+            }
+
+            localNameTag = null;
+        }
     }
-}
 
-private void Update()
-{
-    if (!playerOnPlatform) return;
-
-    standingTime += Time.deltaTime;
-
-    switch (type)
+    private void Update()
     {
-        case PlatformType.Ready:
-            if (standingTime > 0.4f)
-            {
-                Lobby3DManager.Instance.ToggleLocalReady();
-                playerOnPlatform = false; 
-            }
-            break;
+        if (!playerOnPlatform) return;
 
-        case PlatformType.Leave:
-            // The Nametag is already counting down visual text. 
-            // Once the physical physics timer completes, kick them out.
-            if (standingTime >= leaveHoldTime)
-            {
-                Lobby3DManager.Instance.StartLeaveProcess();
-                playerOnPlatform = false;
-            }
-            break;
+        standingTime += Time.deltaTime;
+
+        switch (type)
+        {
+            case PlatformType.Ready:
+                if (standingTime > 0.4f)
+                {
+                    Lobby3DManager.Instance.ToggleLocalReady();
+                    playerOnPlatform = false; 
+                }
+                break;
+
+            case PlatformType.Leave:
+                if (standingTime >= leaveHoldTime)
+                {
+                    Lobby3DManager.Instance.StartLeaveProcess();
+                    playerOnPlatform = false;
+                }
+                break;
+        }
     }
-}
 }

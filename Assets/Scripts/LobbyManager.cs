@@ -24,7 +24,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
     [Header("Game Mode Settings")]
     public TMP_Dropdown gameModeDropdown;
     public TMP_Text selectedModeDisplayText;
-    private GameMode currentGameMode = GameMode.StarCollect;
+    private GameMode currentGameMode = GameMode.CoinCollect;
 
     private void Awake()
     {
@@ -55,7 +55,7 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         if (gameModeDropdown == null) return;
 
         gameModeDropdown.ClearOptions();
-        gameModeDropdown.AddOptions(new List<string> { "Star Collect", "Goal" });
+        gameModeDropdown.AddOptions(new List<string> { "Coin Collect", "Goal" });
 
         gameModeDropdown.onValueChanged.AddListener(OnGameModeChanged);
 
@@ -308,8 +308,8 @@ private IEnumerator DelayedLobbySetup(float delay)
 
             if (selectedModeDisplayText != null)
             {
-                selectedModeDisplayText.text = currentGameMode == GameMode.StarCollect 
-                    ? "Star Collect" 
+                selectedModeDisplayText.text = currentGameMode == GameMode.CoinCollect 
+                    ? "Coin Collect" 
                     : "Goal";
             }
         }

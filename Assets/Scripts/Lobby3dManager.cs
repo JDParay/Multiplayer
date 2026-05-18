@@ -2,50 +2,71 @@ using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
 using TMPro;
-using System.Collections;
-using UnityEngine.UI; // Added for Button interaction
 using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 public class Lobby3DManager : MonoBehaviourPunCallbacks
 {
     public static Lobby3DManager Instance;
-    private GameMode currentGameMode;
 
-    [Header("UI General")]
-    public TMP_Text gameModeText;
+    [Header("Environments")]
+    public GameObject lobbyEnvironment;
+    public GameObject minigameEnvironment;
 
     [Header("Name Change UI")]
     public GameObject nameChangePanel;
     public TMP_InputField nameInputField;
-    public Button confirmButton;
-    public Button cancelButton;
 
     private void Awake()
     {
         Instance = this;
+        PhotonNetwork.AutomaticallySyncScene = true;
     }
 
     private void Start()
     {
-        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("GameMode", out object modeObj))
-        {
-            currentGameMode = (GameMode)System.Convert.ToByte(modeObj);
-        }
-
         SetReady(false);
+    }
 
-        // Setup UI Button listeners
-        if (confirmButton != null) confirmButton.onClick.AddListener(SubmitNameChange);
-        if (cancelButton != null) cancelButton.onClick.AddListener(HideNameChangeUI);
-        
+    // ====================== NAME CHANGE ======================
+    public void ShowNameChangeUI()
+    {
+        if (nameChangePanel == null || nameInputField == null) return;
+
+        nameInputField.text = PhotonNetwork.NickName;
+        nameChangePanel.SetActive(true);
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        nameInputField.ActivateInputField();
+    }
+
+    public void HideNameChangeUI()
+    {
         if (nameChangePanel != null) nameChangePanel.SetActive(false);
     }
 
-    // --- LEAVE LOGIC ---
-    public void StartLeaveProcess() => StartCoroutine(LeaveAfterDelay(5f));
-    private IEnumerator LeaveAfterDelay(float delay)
+    public void SetEditingStatus(bool isEditing)
     {
-        yield return new WaitForSeconds(delay);
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { { "IsEditing", isEditing } });
+    }
+
+    // ====================== READY ======================
+    public void SetReady(bool ready)
+    {
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { { "IsReady", ready } });
+    }
+
+    public void ToggleLocalReady()
+    {
+        bool current = false;
+        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("IsReady", out object r) && r is bool b)
+            current = b;
+
+        SetReady(!current);
+    }
+
+    // ====================== LEAVE ======================
+    public void StartLeaveProcess()
+    {
         PhotonNetwork.LeaveRoom();
     }
 
@@ -54,70 +75,67 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         UnityEngine.SceneManagement.SceneManager.LoadScene("LandingPage");
     }
 
-    // --- NAME CHANGE UI LOGIC ---
-    public void ShowNameChangeUI()
+    // ====================== SAFE READY CHECK ======================
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
     {
-        if (nameChangePanel == null || nameInputField == null) return;
+        if (!changedProps.ContainsKey("IsReady") || !PhotonNetwork.IsMasterClient)
+            return;
 
-        // Pre-populate input field with current nickname
-        nameInputField.text = PhotonNetwork.NickName;
-        nameChangePanel.SetActive(true);
-
-        // Unlock cursor so player can type/click
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-        
-        nameInputField.ActivateInputField(); // Auto-focus text box
+        Invoke(nameof(CheckIfAllReadySafe), 0.2f); // Give more time for properties to settle
     }
 
-    public void HideNameChangeUI()
+    private void CheckIfAllReadySafe()
     {
-        if (nameChangePanel == null) return;
-        
-        nameChangePanel.SetActive(false);
-        SetEditingStatus(false);
+        try
+        {
+            if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.PlayerList == null)
+                return;
+
+            int playerCount = PhotonNetwork.CurrentRoom.PlayerCount;
+            if (playerCount <= 0) return;
+
+            int readyCount = 0;
+
+            foreach (Player p in PhotonNetwork.PlayerList)
+            {
+                if (p == null) continue;
+
+                bool isReady = false;
+                var props = p.CustomProperties;
+
+                if (props != null)
+                {
+                    if (props.TryGetValue("IsReady", out object obj) && obj is bool b)
+                        isReady = b;
+                }
+
+                if (isReady)
+                    readyCount++;
+            }
+
+            if (readyCount >= playerCount)
+            {
+                Debug.Log("✅ ALL PLAYERS READY - Starting game!");
+                photonView.RPC("RPC_TransitionToMinigame", RpcTarget.All);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            // Silent fail during join phase - this is expected sometimes
+            // Debug.LogWarning("CheckIfAllReadySafe failed: " + ex.Message);
+        }
     }
 
-    public void SetEditingStatus(bool isEditing)
+    [PunRPC]
+    private void RPC_TransitionToMinigame()
     {
-        Hashtable props = new Hashtable { { "IsEditing", isEditing } };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-    }
+        Debug.Log("🔄 Transitioning to Minigame!");
 
-    public void SubmitNameChange()
-    {
-        if (nameInputField == null || string.IsNullOrWhiteSpace(nameInputField.text)) return;
+        if (lobbyEnvironment != null) lobbyEnvironment.SetActive(false);
+        if (minigameEnvironment != null) minigameEnvironment.SetActive(true);
 
-        string newName = nameInputField.text.Trim();
-        
-        // 1. Update local Photon Nickname
-        PhotonNetwork.NickName = newName;
-
-        Hashtable prop = new Hashtable { { "UpdateName", Random.Range(0, 10000) } }; 
-        PhotonNetwork.LocalPlayer.SetCustomProperties(prop);
-
-        HideNameChangeUI();
-    }
-
-    // --- READY LOGIC ---
-    public void SetReady(bool ready)
-    {
-        Hashtable props = new Hashtable { { "IsReady", ready } };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-    }
-
-    public void ToggleLocalReady()
-    {
-        bool current = false;
-        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("IsReady", out object ready))
-            current = (bool)ready;
-
-        SetLocalPlayerReady(!current);
-    }
-
-    public void SetLocalPlayerReady(bool isReady)
-    {
-        Hashtable props = new Hashtable { { "IsReady", isReady } };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        var spawner = FindFirstObjectByType<GameplaySpawner>();
+        if (spawner != null)
+            spawner.MoveExistingPlayerToMatch();
     }
 }
