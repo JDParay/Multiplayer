@@ -16,9 +16,18 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
     public GameObject nameChangePanel;
     public TMP_InputField nameInputField;
 
+    private PhotonView pv;
+
     private void Awake()
     {
         Instance = this;
+        pv = GetComponent<PhotonView>();
+        if (pv == null)
+        {
+            pv = gameObject.AddComponent<PhotonView>();
+            Debug.LogWarning("✅ Added missing PhotonView to Lobby3DManager");
+        }
+
         PhotonNetwork.AutomaticallySyncScene = true;
     }
 
@@ -64,7 +73,6 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         SetReady(!current);
     }
 
-    // ====================== LEAVE ======================
     public void StartLeaveProcess()
     {
         PhotonNetwork.LeaveRoom();
@@ -81,15 +89,14 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         if (!changedProps.ContainsKey("IsReady") || !PhotonNetwork.IsMasterClient)
             return;
 
-        Invoke(nameof(CheckIfAllReadySafe), 0.2f); // Give more time for properties to settle
+        Invoke(nameof(CheckIfAllReadySafe), 0.3f);
     }
 
     private void CheckIfAllReadySafe()
     {
         try
         {
-            if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.PlayerList == null)
-                return;
+            if (PhotonNetwork.CurrentRoom == null) return;
 
             int playerCount = PhotonNetwork.CurrentRoom.PlayerCount;
             if (playerCount <= 0) return;
@@ -101,35 +108,34 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
                 if (p == null) continue;
 
                 bool isReady = false;
-                var props = p.CustomProperties;
-
-                if (props != null)
+                if (p.CustomProperties != null && 
+                    p.CustomProperties.TryGetValue("IsReady", out object obj) && obj is bool b)
                 {
-                    if (props.TryGetValue("IsReady", out object obj) && obj is bool b)
-                        isReady = b;
+                    isReady = b;
                 }
 
-                if (isReady)
-                    readyCount++;
+                if (isReady) readyCount++;
             }
 
             if (readyCount >= playerCount)
             {
-                Debug.Log("✅ ALL PLAYERS READY - Starting game!");
-                photonView.RPC("RPC_TransitionToMinigame", RpcTarget.All);
+                Debug.Log("✅ ALL PLAYERS READY - Sending RPC!");
+                if (pv != null)
+                    pv.RPC("RPC_TransitionToMinigame", RpcTarget.All);
+                else
+                    Debug.LogError("❌ No PhotonView on Lobby3DManager!");
             }
         }
-        catch (System.Exception ex)
+        catch 
         {
-            // Silent fail during join phase - this is expected sometimes
-            // Debug.LogWarning("CheckIfAllReadySafe failed: " + ex.Message);
+            // Silent during joins
         }
     }
 
     [PunRPC]
     private void RPC_TransitionToMinigame()
     {
-        Debug.Log("🔄 Transitioning to Minigame!");
+        Debug.Log("🔄 RPC_TransitionToMinigame RECEIVED! Switching environments...");
 
         if (lobbyEnvironment != null) lobbyEnvironment.SetActive(false);
         if (minigameEnvironment != null) minigameEnvironment.SetActive(true);
@@ -137,5 +143,7 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         var spawner = FindFirstObjectByType<GameplaySpawner>();
         if (spawner != null)
             spawner.MoveExistingPlayerToMatch();
+        else
+            Debug.LogWarning("No GameplaySpawner found!");
     }
 }

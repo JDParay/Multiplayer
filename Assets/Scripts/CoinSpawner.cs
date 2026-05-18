@@ -3,7 +3,6 @@ using Photon.Pun;
 
 public class CoinSpawner : MonoBehaviour
 {
-    public string coinPrefabName = "Coin"; 
     public Transform[] spawnPoints;
     public float spawnInterval = 2.5f;
 
@@ -27,7 +26,22 @@ public class CoinSpawner : MonoBehaviour
 
     private void SpawnCoin()
     {
-        Transform targetPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
-        PhotonNetwork.Instantiate(coinPrefabName, targetPoint.position, Quaternion.identity);
+        if (!PhotonNetwork.IsMasterClient || spawnPoints == null || spawnPoints.Length == 0) 
+            return;
+
+        int index = Random.Range(0, spawnPoints.Length);
+        Transform targetPoint = spawnPoints[index];
+
+        Vector3 spawnPos = targetPoint.position;
+        Quaternion spawnRot = targetPoint.rotation;   // ← Take rotation too
+
+        Debug.Log($"Spawning coin at {spawnPos} | Rotation: {spawnRot.eulerAngles}");
+
+        GameObject coin = PhotonNetwork.InstantiateRoomObject("Prefabs/Coin", spawnPos, spawnRot);
+
+        if (coin != null)
+        {
+            coin.GetComponent<CoinScript>().SetSpawnTransform(spawnPos, spawnRot);
+        }
     }
 }

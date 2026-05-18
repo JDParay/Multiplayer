@@ -1,8 +1,11 @@
 using UnityEngine;
 using Photon.Pun;
+using Photon.Realtime;
 
-public class CoinScript : MonoBehaviourPun
+public class CoinScript : MonoBehaviourPun, IPunInstantiateMagicCallback
 {
+    private Vector3 desiredPosition;
+    private Quaternion desiredRotation;
     private bool isCollected = false;
     public AudioClip sfx;
 
@@ -31,18 +34,45 @@ public class CoinScript : MonoBehaviourPun
             }
             else
             {
-                // Send an RPC command or request owner destruction
                 photonView.RPC("RequestDestroyCoin", RpcTarget.MasterClient);
             }
         }
     }
-
+  
     [PunRPC]
     private void RequestDestroyCoin()
     {
         if (PhotonNetwork.IsMasterClient)
         {
             PhotonNetwork.Destroy(gameObject);
+        }
+    }
+
+    public void OnPhotonInstantiate(PhotonMessageInfo info)
+    {
+        if (info.photonView.InstantiationData != null && info.photonView.InstantiationData.Length > 0)
+        {
+            Vector3 targetPos = (Vector3)info.photonView.InstantiationData[0];
+            transform.position = targetPos;
+            Debug.Log($"✅ Coin position forced to: {targetPos}");
+        }
+    }
+
+    public void SetSpawnTransform(Vector3 pos, Quaternion rot)
+    {
+        desiredPosition = pos;
+        desiredRotation = rot;
+        
+        transform.position = pos;
+        transform.rotation = rot;
+    }
+
+    private void LateUpdate()
+    {
+        if (desiredPosition != Vector3.zero)
+        {
+            transform.position = desiredPosition;
+            transform.rotation = desiredRotation;
         }
     }
 }
