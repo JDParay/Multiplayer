@@ -58,6 +58,31 @@ public class Lobby3DManager : MonoBehaviourPunCallbacks
         PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { { "IsEditing", isEditing } });
     }
 
+    public void ConfirmNameChange()
+    {
+        if (string.IsNullOrWhiteSpace(nameInputField.text))
+        {
+            Debug.LogWarning("Name cannot be empty!");
+            return;
+        }
+
+        string newName = nameInputField.text.Trim();
+
+        if (newName.Length > 12)
+            newName = newName.Substring(0, 12);
+
+        PhotonNetwork.NickName = newName;
+
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable 
+        { 
+            { "NickName", newName } 
+        });
+
+        HideNameChangeUI();
+
+        Debug.Log("Name changed to: " + newName);
+    }
+
     // ====================== READY ======================
     public void SetReady(bool ready)
     {

@@ -7734,7 +7734,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 54777787}
         m_TargetAssemblyTypeName: Lobby3DManager, Assembly-CSharp
-        m_MethodName: ShowNameChangeUI
+        m_MethodName: ConfirmNameChange
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
